@@ -1,0 +1,44 @@
+---
+title: |-
+  F1 results
+   \vspace{0.5in}
+author:
+- name: Christoffer Trier Månsson
+output:
+  BiocStyle::html_document:
+    toc: yes
+    toc_depth: 2
+    number_sections: yes
+    highlight: haddock
+date: "`r format(Sys.time(), '%d %b %Y')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Hvem fører
+
+
+```{r}
+```
+
+## Løbende udvikling
+
+# Bets og resultater
+
+# Kørernes resultater
+
+## Løbende udvikling
+
+
+# Regler for spillet
+
+
+```{r}
+```
+
+
+# Information om data
+
+Data er taget fra følgende side <https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020?resource=download> som løbende opdatere den seneste data fra hele F1
