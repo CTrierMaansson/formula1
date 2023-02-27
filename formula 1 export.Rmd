@@ -13,32 +13,179 @@ output:
 date: "`r format(Sys.time(), '%d %b %Y')`"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+    tidy.opts = list(width.cutoff=100),
+    tidy = FALSE,
+    message = FALSE,
+    collapse = TRUE,
+    comment = "#>",
+    root.dir = "C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive"
+)
+knitr::opts_knit$set(root.dir = "C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive")
 ```
-
-# Hvem fører
+\newpage
+# Hvem fører vores bet
+<img src="download.png" width="200" align="right">
 
 
 ```{r}
 ```
 
-## Løbende udvikling
-
-# Bets og resultater
+## Løbende udvikling for bets
 
 # Kørernes resultater
 
-## Løbende udvikling
+## Kørernes udvikling
+
+## Teamets udvikling
+
+## Fold difference from teammate
 
 
 # Regler for spillet
 
+Reglerne er simple. Hver fredag inden en løbsdag skal man have sendt til 
+Christoffer i chatgruppen, **Formula1**, hvilke 3 kører man forventer bliver
+nummer 1, 2 og 3 i det kommende løb.
 
-```{r}
+**Alle hjælper alle med at huske at der skal indsendes bud på det kommende løb!**
+
+Glemmer man at give noget bud får man 50 point i straf. 
+
+Efter hvert løb bliver det beregnet hvor mange pladser ens kører er væk fra den
+plads man gættede på, at køren blev. Hvis en kører udgår får man 
+22 point for den kører. Altså kan man minimalt få 0 point (før bonuser), mens 
+man maximalt kan få 66 point.
+
+I formel1 sæsonen køres 23 løb. For at give lidt sikkerhed medregnes ens 3
+dårligste bud ikke i regnskabet og derfor er hver spillers score baseret på
+i alt 20 løb til slut i sæsonen.
+
+## Bonus
+
+Der udlådes bonus på to måder. 
+
+1) Er man den eneste der har løbets vinder gives -10 point
+
+2) Er man den eneste der har løbets top 3 gives -30 point
+
+Har man kun eks. løbets nummer 1 og 2 gives -10 point.
+
+Har man kun løbets nummer 2 og 3 gives ingen bonus. 
+
+## Præmie
+
+Det er blevet besluttet at vi alle skal en tur ud at køre gokart når sæsonen
+er slut. Her skal nummer 2 og 3 i bettingspillet bestale for udgifter for
+nummer 1. **Plus de giver en øl i fredagsbaren! ;)** 
+
+# Resultaterne for 2022 sæsonen
+
+Her finder man et lille overblik over hvordan 2022 sæsonen gik. 
+
+## Slut resultat
+
+```{r, echo=FALSE}
+library(dplyr)
+
+df_races_2022 <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022)
+df_drivers_2022 <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% select(driverId, forename, surname)
+df_results_2022 <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId %in% df_races_2022$raceId) %>% 
+    group_by(driverId) %>% 
+    summarise(.groups = "keep",
+              cumulativePoints = cumsum(points),
+              raceId = raceId,
+              totPoints = sum(points))
+totResult <- abs(sort(-unique(df_results_2022$totPoints)))
+df_results_2022 <- df_results_2022 %>%  
+    left_join(df_drivers_2022, by = "driverId") %>% 
+    left_join(df_races_2022 %>% select(raceId,name,date), by = "raceId") %>% 
+    mutate(driverName = paste(forename, surname)) %>% 
+    mutate(isTop10 = ifelse(totPoints %in% totResult[1:10] | surname == "Magnussen","Yes","No")) %>% 
+    filter(isTop10 == "Yes") %>% 
+    mutate(place = factor(name, level = unique(name))) %>% 
+    mutate(label = ifelse(raceId == max(raceId), 
+                          ifelse(isTop10 == "Yes", as.character(surname),NA_character_),
+                          NA_character_))
+
 ```
 
+```{r, echo=FALSE}
+library(ggplot2)
+library(viridis)
+library(ggrepel)
+res <- df_results_2022 %>% filter(raceId == 1074) %>%
+    arrange(totPoints)
+res <- res %>% mutate(driverName = factor(driverName, levels = res$driverName))
+ggplot(res, aes(x = driverName,
+           y = totPoints,
+           fill = driverName))+
+    scale_fill_viridis("magma",discrete = T)+ 
+    geom_bar(stat = "identity")+
+    theme_minimal()+
+    labs(x = "",
+         y = "Accumulated points",
+         title = "2022")+ 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1,size = 8),
+          legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+    axis.text.y = element_text(angle = 0, size = 12),
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.title.x = element_text(size = 14, face = 'bold'),
+    axis.title.y = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 12), 
+    title = element_text(size = 14, face = "bold"),
+    panel.grid.major.x = element_blank())+
+    guides(fill="none")
+
+```
+
+## Udviklingen gennem 2022
+
+```{r, echo=FALSE,fig.height= 6}
+library(ggplot2)
+library(viridis)
+library(ggrepel)
+ggplot(df_results_2022, aes(x = place,
+                            y = cumulativePoints,
+                            colour = driverName,
+                            group = driverName))+
+    geom_point()+
+    scale_color_viridis("magma",discrete = T)+ 
+    geom_line()+
+    theme_minimal()+
+    labs(y = "Points",
+         x = "",
+         title = "2022")+
+    geom_label_repel(aes(label=label),
+                  nudge_x = 2,
+                  na.rm = TRUE,
+                  label.size = NA,
+                  size = 3.5,
+                  fill = alpha(c("white"),0),
+                  parse = F,
+                 max.overlaps = 100)+
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1,size = 8),
+          legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+    axis.text.y = element_text(angle = 0, size = 12),
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.title.x = element_text(size = 14, face = 'bold'),
+    axis.title.y = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 12), 
+    title = element_text(size = 14, face = "bold"))+
+   guides(color="none")
+```
 
 # Information om data
 
 Data er taget fra følgende side <https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020?resource=download> som løbende opdatere den seneste data fra hele F1
+
+Koden til dette dokument er frit tilgængelig gennem <https://github.com/CTrierMaansson/formula1> hvor der også vil komme løbende
+opdateringer. Jeg henviser til **issues** fanen for bugs og andre problemer 
+med dokumente. Her kan man også rette forslag til statistik man ønsker skal være
+en del af dokumentet 
+
