@@ -29,7 +29,133 @@ knitr::opts_knit$set(root.dir = "C:/Users/Christoffer/OneDrive/1PhD/formula1/for
 <img src="download.png" width="200" align="right">
 
 
-```{r}
+
+## Seneste bets
+```{r, echo=FALSE}
+library(dplyr)
+`%ni%` <- Negate(`%in%`)
+bet_df <- function(Christoffer, Emil, Mikkel){
+    drivers <- df_drivers_2022 <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% select(driverId, forename, surname)
+    if(any(Christoffer %ni% drivers$surname)){
+        stop("Én eller flere af Christoffers bud er ikke gyldige")
+    }
+    if(any(Emil %ni% drivers$surname)){
+        stop("Én eller flere af Emils bud er ikke gyldige")
+    }
+    if(any(Mikkel %ni% drivers$surname)){
+        stop("Én eller flere af Mikkels bud er ikke gyldige")
+    }
+    if(length(unique(Christoffer))!= 3){
+        stop("Christoffer har ikke givet 3 forskellige bud")
+    }
+    if(length(unique(Emil))!= 3){
+        stop("Emil har ikke givet 3 forskellige bud")
+    }
+    if(length(unique(Mikkel))!= 3){
+        stop("Mikkel har ikke givet 3 forskellige bud")
+    }
+    df <- data.frame(Bets = c("Vinder", "Andenplads", "Tredjeplads"),
+               Christoffer = Christoffer,
+               Emil = Emil,
+               Mikkel = Mikkel)
+    return(df)
+}
+
+bet_df_w <- bet_df(Christoffer = c("Hamilton", "Leclerc", "Magnussen"),
+                   Emil = c("Verstappen", "Hamilton", "Pérez"),
+                   Mikkel = c("Sainz", "Hamilton", "Leclerc"))
+
+```
+
+Lav det så der vises hvilket løb dette er bets på
+
+```{r, echo = F}
+
+print(bet_df_w)
+```
+
+
+## Seneste top 10
+
+## Seneste bet resultat
+```{r, echo=FALSE}
+point_calculator <- function(bet_df){
+    df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
+    df_drivers <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
+    df_results <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId == df_race$raceId) %>% 
+        left_join(df_drivers, by = "driverId")
+    #Christoffer
+    bet_Christoffer <- bet_df %>% select(Christoffer)
+    res_Christoffer <- match(bet_Christoffer$Christoffer, df_results$surname) 
+    for(i in 1:length(res_Christoffer)){
+        ddf <- df_results[res_Christoffer[i],]
+        if(ddf$time == "\\N"){
+            res_Christoffer[i] <- 20
+        }
+    }
+    Christoffer_points <- sum(abs(res_Christoffer-c(1,2,3)))
+    #Emil
+    bet_Emil <- bet_df %>% select(Emil)
+    res_Emil <- match(bet_Emil$Emil, df_results$surname) 
+    for(i in 1:length(res_Emil)){
+        ddf <- df_results[res_Emil[i],]
+        if(ddf$time == "\\N"){
+            res_Emil[i] <- 20
+        }
+    }
+    Emil_points <- sum(abs(res_Emil-c(1,2,3)))
+    #Mikkel
+    bet_Mikkel <- bet_df %>% select(Mikkel)
+    res_Mikkel <- match(bet_Mikkel$Mikkel, df_results$surname) 
+    for(i in 1:length(res_Mikkel)){
+        ddf <- df_results[res_Mikkel[i],]
+        if(ddf$time == "\\N"){
+            res_Mikkel[i] <- 20
+        }
+    }
+    Mikkel_points <- sum(abs(res_Mikkel-c(1,2,3)))
+    collected_points <- c(Christoffer_points,Emil_points,Mikkel_points)
+    if(any(collected_points == 0)){
+        if(sum(collected_points == 0) == 1){
+            winner_all3 <- colnames(bet_df)[c(2,3,4)][collected_points == 0]
+            
+        }
+    }
+    else{
+        winner_all3 <- NULL
+    }
+    collected_winners <- c(res_Christoffer[1]-1,res_Emil[1]-1,res_Mikkel[1]-1)
+    if(is.null(winner_all3)){
+        if(any(collected_winners == 0)){
+            if(sum(collected_winners == 0) == 1){
+                winner <- colnames(bet_df)[c(2,3,4)][collected_winners == 0]
+            }
+        }
+        else{
+            winner <- NULL
+        }
+    }
+    
+    res_df <- data.frame(Bets = "Point",
+                         Christoffer = Christoffer_points,
+                         Emil = Emil_points,
+                         Mikkel = Mikkel_points)
+    if(!is.null(winner_all3)){
+        res_df[winner_all3] <- -30
+    }
+    if(!is.null(winner)){
+        res_df[winner] <- -10
+    }
+    df <- rbind(bet_df,res_df)
+    return(df)
+}
+
+```
+
+Lav det så der vises hvilket løb dette er baseret på
+```{r, echo = F}
+
+print(point_calculator(bet_df_w))
 ```
 
 ## Løbende udvikling for bets
@@ -55,8 +181,11 @@ Glemmer man at give noget bud får man 50 point i straf.
 
 Efter hvert løb bliver det beregnet hvor mange pladser ens kører er væk fra den
 plads man gættede på, at køren blev. Hvis en kører udgår får man 
-22 point for den kører. Altså kan man minimalt få 0 point (før bonuser), mens 
-man maximalt kan få 66 point.
+anses det at han slutter sidst og får position 20. 
+Altså kan man minimalt få 0 point (før bonuser), mens 
+man maximalt kan få 54 point (20-1 + 20-2 + 20-3 = 19+18+17 = 54).
+
+Slutter ens bud bedre end man har budt får man stadig plus point
 
 I formel1 sæsonen køres 23 løb. For at give lidt sikkerhed medregnes ens 3
 dårligste bud ikke i regnskabet og derfor er hver spillers score baseret på
@@ -78,7 +207,7 @@ Har man kun løbets nummer 2 og 3 gives ingen bonus.
 
 Det er blevet besluttet at vi alle skal en tur ud at køre gokart når sæsonen
 er slut. Her skal nummer 2 og 3 i bettingspillet bestale for udgifter for
-nummer 1. **Plus de giver en øl i fredagsbaren! ;)** 
+nummer 1. **Plus ham der slutter sidst giver en øl i fredagsbaren! ;)** 
 
 # Resultaterne for 2022 sæsonen
 
@@ -111,6 +240,9 @@ df_results_2022 <- df_results_2022 %>%
 
 ```
 
+Sidste års klare vinder var Max Verstappen, men det var meget tæt mellem nummer
+2 og 3. 
+
 ```{r, echo=FALSE}
 library(ggplot2)
 library(viridis)
@@ -127,7 +259,8 @@ ggplot(res, aes(x = driverName,
     labs(x = "",
          y = "Accumulated points",
          title = "2022")+ 
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1,size = 8),
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, 
+                                     size = 8, face = "bold"),
           legend.background = element_rect(),
     plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
     plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
@@ -144,6 +277,8 @@ ggplot(res, aes(x = driverName,
 
 ## Udviklingen gennem 2022
 
+Verstappen havde en dårligere start på sæsonen end nogen af hans konkurrenter
+Herimod havde Magnussen en meget stille sidste halvdel af sæsonen. 
 ```{r, echo=FALSE,fig.height= 6}
 library(ggplot2)
 library(viridis)
@@ -178,6 +313,55 @@ ggplot(df_results_2022, aes(x = place,
     legend.text = element_text(size = 12), 
     title = element_text(size = 14, face = "bold"))+
    guides(color="none")
+```
+
+## Team ranking i 2022
+
+Red Bull med Perez (samlet nummer 3) og Verstappen (samlet vinder) blev en 
+rimelig klar vinder af team konkurrencen. Kampen om andepladsen var tæt mellem
+Mercedes (Russell (4) og Hamilton (5)) og Ferrari (Leclerc (2) og Sainz (6)).
+Williams slutter sidst med bare 7 point på en hel sæson! Det er sgu en ommer!
+
+```{r, echo=FALSE,fig.height= 6}
+library(dplyr)
+library(scales)
+df_constructors <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/constructors.csv") %>% select(constructorId, name)
+df_results_2022_teams <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId %in% df_races_2022$raceId) %>% 
+    group_by(constructorId) %>% 
+    summarise(.groups = "keep",
+              raceId = raceId,
+              totPoints = sum(points)) %>% 
+        left_join(df_constructors, by = "constructorId") %>% 
+    filter(raceId == "1095") %>% 
+    arrange(totPoints) %>% 
+    distinct()
+df_results_2022_teams %>% 
+    mutate(name = factor(name, levels = unique(df_results_2022_teams$name))) %>% 
+    ggplot(aes(x = name, y = totPoints,
+           fill = name)) +
+    scale_fill_viridis("magma",discrete = T)+ 
+    geom_bar(stat = "identity")+
+    theme_minimal()+
+    scale_y_continuous(trans = "log10",
+                       labels = label_comma())+
+    labs(x = "",
+         y = "Accumulated points",
+         title = "2022")+ 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, 
+                                     size = 8, face = "bold"),
+          legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+    axis.text.y = element_text(angle = 0, size = 12),
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.title.x = element_text(size = 14, face = 'bold'),
+    axis.title.y = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 12), 
+    title = element_text(size = 14, face = "bold"),
+    panel.grid.major.x = element_blank())+
+    guides(fill="none")
+
+
 ```
 
 # Information om data
