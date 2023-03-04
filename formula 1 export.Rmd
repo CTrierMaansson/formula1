@@ -25,12 +25,13 @@ knitr::opts_chunk$set(
 knitr::opts_knit$set(root.dir = "C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive")
 ```
 \newpage
-# Hvem fører vores bet
+# Bets
 <img src="download.png" width="200" align="right">
 
 
-
 ## Seneste bets
+
+Det her var buddene inden seneste løb
 ```{r, echo=FALSE}
 library(dplyr)
 `%ni%` <- Negate(`%in%`)
@@ -45,29 +46,30 @@ bet_df <- function(Christoffer, Emil, Mikkel){
     if(any(Mikkel %ni% drivers$surname)){
         stop("Én eller flere af Mikkels bud er ikke gyldige")
     }
-    if(length(unique(Christoffer))!= 3){
+    if(length(unique(Christoffer[1:3]))!= 3){
         stop("Christoffer har ikke givet 3 forskellige bud")
     }
-    if(length(unique(Emil))!= 3){
+    if(length(unique(Emil[1:3]))!= 3){
         stop("Emil har ikke givet 3 forskellige bud")
     }
-    if(length(unique(Mikkel))!= 3){
+    if(length(unique(Mikkel[1:3]))!= 3){
         stop("Mikkel har ikke givet 3 forskellige bud")
     }
-    df <- data.frame(Bets = c("Vinder", "Andenplads", "Tredjeplads"),
+    df <- data.frame(Bets = c("Vinder", "Andenplads", "Tredjeplads","Joker"),
                Christoffer = Christoffer,
                Emil = Emil,
                Mikkel = Mikkel)
     return(df)
 }
 
-bet_df_w <- bet_df(Christoffer = c("Hamilton", "Leclerc", "Magnussen"),
-                   Emil = c("Verstappen", "Hamilton", "Pérez"),
-                   Mikkel = c("Sainz", "Hamilton", "Leclerc"))
+bet_df_w <- bet_df(Christoffer = c("Hamilton", "Leclerc", "Sainz","Ricciardo"),
+                   Emil = c("Verstappen", "Hamilton", "Pérez","Hamilton"),
+                   Mikkel = c("Sainz", "Hamilton", "Leclerc","Sainz"))
 
 ```
 
-Lav det så der vises hvilket løb dette er bets på
+Dette er bare nogen for sjov bud jeg har givet for at kunne tjekke mine 
+funktioner. Skriver selvfølgelig de rigtige ind efter kvallen på lørdag
 
 ```{r, echo = F}
 
@@ -77,8 +79,47 @@ print(bet_df_w)
 
 ## Seneste top 10
 
+Her præsenterer jeg seneste løbs top 10. 
+
+```{r, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+library(viridis)
+df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
+df_drivers <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
+df_results <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId == df_race$raceId) %>% 
+        left_join(df_drivers, by = "driverId") %>% 
+    filter(points > 0) %>% 
+    arrange(points)
+df_results <- df_results %>% 
+    mutate(surname = factor(surname, levels = df_results$surname))
+ggplot(df_results,aes(x = surname, y = points,
+           fill = surname)) +
+    scale_fill_viridis("magma",discrete = T)+ 
+    geom_bar(stat = "identity")+
+    theme_minimal()+
+    labs(x = "",
+         y = "Points",
+         title = paste(df_race$name,df_race$date))+ 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, 
+                                     size = 12, face = "bold"),
+          legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+    axis.text.y = element_text(angle = 0, size = 12),
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.title.x = element_text(size = 14, face = 'bold'),
+    axis.title.y = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 12), 
+    title = element_text(size = 14, face = "bold"),
+    panel.grid.major.x = element_blank())+
+    guides(fill="none")
+
+```
+
 ## Seneste bet resultat
 ```{r, echo=FALSE}
+library(dplyr)
 point_calculator <- function(bet_df){
     df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
     df_drivers <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
@@ -86,7 +127,7 @@ point_calculator <- function(bet_df){
         left_join(df_drivers, by = "driverId")
     #Christoffer
     bet_Christoffer <- bet_df %>% select(Christoffer)
-    res_Christoffer <- match(bet_Christoffer$Christoffer, df_results$surname) 
+    res_Christoffer <- match(bet_Christoffer$Christoffer[1:3], df_results$surname) 
     for(i in 1:length(res_Christoffer)){
         ddf <- df_results[res_Christoffer[i],]
         if(ddf$time == "\\N"){
@@ -94,9 +135,20 @@ point_calculator <- function(bet_df){
         }
     }
     Christoffer_points <- sum(abs(res_Christoffer-c(1,2,3)))
-    #Emil
+    joker_Christoffer <- df_results %>% 
+        filter(surname == bet_Christoffer$Christoffer[4])
+    joker_res_Christoffer <- ifelse(joker_Christoffer$time == "\\N",
+                                    20-joker_Christoffer$grid,
+                                    as.numeric(joker_Christoffer$position)-
+                                                   joker_Christoffer$grid)
     bet_Emil <- bet_df %>% select(Emil)
-    res_Emil <- match(bet_Emil$Emil, df_results$surname) 
+    res_Emil <- match(bet_Emil$Emil[1:3], df_results$surname)
+    joker_Emil <- df_results %>% 
+        filter(surname == bet_Emil$Emil[4])
+    joker_res_Emil <- ifelse(joker_Emil$time == "\\N",
+                                    20-joker_Emil$grid,
+                                    as.numeric(joker_Emil$position)-
+                                                   joker_Emil$grid)
     for(i in 1:length(res_Emil)){
         ddf <- df_results[res_Emil[i],]
         if(ddf$time == "\\N"){
@@ -106,7 +158,7 @@ point_calculator <- function(bet_df){
     Emil_points <- sum(abs(res_Emil-c(1,2,3)))
     #Mikkel
     bet_Mikkel <- bet_df %>% select(Mikkel)
-    res_Mikkel <- match(bet_Mikkel$Mikkel, df_results$surname) 
+    res_Mikkel <- match(bet_Mikkel$Mikkel[1:3], df_results$surname) 
     for(i in 1:length(res_Mikkel)){
         ddf <- df_results[res_Mikkel[i],]
         if(ddf$time == "\\N"){
@@ -114,6 +166,12 @@ point_calculator <- function(bet_df){
         }
     }
     Mikkel_points <- sum(abs(res_Mikkel-c(1,2,3)))
+    joker_Mikkel <- df_results %>% 
+        filter(surname == bet_Mikkel$Mikkel[4])
+    joker_res_Mikkel <- ifelse(joker_Mikkel$time == "\\N",
+                                    20-joker_Mikkel$grid,
+                                    as.numeric(joker_Mikkel$position)-
+                                                   joker_Mikkel$grid)
     collected_points <- c(Christoffer_points,Emil_points,Mikkel_points)
     if(any(collected_points == 0)){
         if(sum(collected_points == 0) == 1){
@@ -146,32 +204,169 @@ point_calculator <- function(bet_df){
     if(!is.null(winner)){
         res_df[winner] <- -10
     }
+    res_df$Christoffer <- res_df$Christoffer + joker_res_Christoffer
+    res_df$Emil <- res_df$Emil + joker_res_Emil
+    res_df$Mikkel <- res_df$Mikkel + joker_res_Mikkel
     df <- rbind(bet_df,res_df)
     return(df)
 }
 
 ```
 
-Lav det så der vises hvilket løb dette er baseret på
+Her kan man se hvor mange point vi fik efter seneste grandprix. 
+
 ```{r, echo = F}
+library(dplyr)
+df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
+
+print(paste(df_race$name,df_race$date))
 
 print(point_calculator(bet_df_w))
 ```
 
+## Seneste Joker resultat
+
+Her kan man se hvordan jokeren har spillet ind på resultatet
+
+```{r, echo = FALSE}
+library(ggrepel)
+library(viridis)
+joker_plot <- function(bet_df){
+    df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
+    df_drivers <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
+    df_results <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId == df_race$raceId) %>% 
+        left_join(df_drivers, by = "driverId")
+    bet_Christoffer <- bet_df %>% select(Christoffer)
+    bet_Emil <- bet_df %>% select(Emil)
+    bet_Mikkel <- bet_df %>% select(Mikkel)
+    joker_Christoffer <- df_results %>% 
+        filter(surname == bet_Christoffer$Christoffer[4])
+    joker_res_Christoffer <- ifelse(joker_Christoffer$time == "\\N",
+                                    20-joker_Christoffer$grid,
+                                    as.numeric(joker_Christoffer$position)-
+                                                   joker_Christoffer$grid)
+    joker_Emil <- df_results %>% 
+        filter(surname == bet_Emil$Emil[4])
+    joker_res_Emil <- ifelse(joker_Emil$time == "\\N",
+                                    20-joker_Emil$grid,
+                                    as.numeric(joker_Emil$position)-
+                                                   joker_Emil$grid)
+    joker_Mikkel <- df_results %>% 
+        filter(surname == bet_Mikkel$Mikkel[4])
+    joker_res_Mikkel <- ifelse(joker_Mikkel$time == "\\N",
+                                    20-joker_Mikkel$grid,
+                                    as.numeric(joker_Mikkel$position)-
+                                                   joker_Mikkel$grid)
+    df <- data.frame(person = c(rep("Christoffer",2),
+                                rep("Emil",2),
+                                rep("Mikkel",2)),
+                     type = factor(rep(c("Start","Slut"),3),
+                                   levels = c("Start","Slut")),
+                     position = c(as.numeric(joker_Christoffer$grid),
+                                  ifelse(joker_Christoffer$time == "\\N",
+                                         20,
+                                         as.numeric(joker_Christoffer$position)),
+                                  as.numeric(joker_Emil$grid),
+                                  ifelse(joker_Emil$time == "\\N",
+                                         20,
+                                         as.numeric(joker_Emil$position)),
+                                  as.numeric(joker_Mikkel$grid),
+                                  ifelse(joker_Mikkel$time == "\\N",
+                                         20,
+                                         as.numeric(joker_Mikkel$position))),
+                     driver = c(rep(bet_Christoffer$Christoffer[4],2),
+                                rep(bet_Emil$Emil[4],2),
+                                rep(bet_Mikkel$Mikkel[4],2)),
+                     result = c(rep(joker_res_Christoffer,2),
+                                rep(joker_res_Emil,2),
+                                rep(joker_res_Mikkel,2)))
+    gg <- ggplot(df, aes(x = type,y = position,group = person,
+                         color = person))+
+        geom_point(size = 5)+
+        geom_line(linewidth = 1.5)+
+        scale_color_viridis("cividis",discrete = T)+
+        theme_minimal()+
+        labs(title = paste("Joker -",df_race$name,df_race$date),
+             x = "",
+             y = "Placering")+
+        scale_y_continuous(limits = c(0,20))+
+        geom_label_repel(aes(label=ifelse(type == "Slut",
+                                          paste(driver,result),"")),
+                  nudge_x = 0.25,
+                  na.rm = TRUE,
+                  label.size = NA,
+                  size = 3.5,
+                  fill = alpha(c("white"),0),
+                  parse = F,
+                 max.overlaps = 100)+
+            theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, 
+                                     size = 12, face = "bold"),
+            legend.background = element_rect(),
+            plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+            plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+            axis.text.y = element_text(angle = 0, size = 12),
+            axis.title = element_text(size = 14, face = 'bold'),
+            axis.title.x = element_text(size = 14, face = 'bold'),
+            axis.title.y = element_text(size = 14, face = 'bold'),
+            legend.text = element_text(size = 12), 
+            title = element_text(size = 14, face = "bold"),
+            panel.grid.major.x = element_blank(),
+            legend.title = element_blank())+
+        guides(color = guide_legend(override.aes = aes(label = ""))) 
+    
+    return(gg)
+    
+}
+joker_plot(bet_df_w)
+```
+
+
 ## Løbende udvikling for bets
 
+Her kan man se hvordan det går i vores interne konkurrence efter hvert
+grandprix. Først efter 4. løb vil jeg tage de værste 3 løb ud fra vores 
+totale antal point. 
+
+```{r, echo = FALSE}
+
+list_of_bets <- list(point_calculator(bet_df_w))
+
+
+```
+
+## Hvem har vi bettet på
+
+Her er det mening jeg vil tælle hvor mange gange vi har bettet på de enkelte
+kører samt hvordan vores bets performer med de enkelte kører
+
+## Hvor meget vinder vi på vores joker
+
+Her er det meningen jeg vil summere hvor meget jokeren har haft betydning
+for vores bets gennem sæsonen
+
 # Kørernes resultater
+
+Her kan man se hvordan kørerne scorer point gennem sæson. Jeg vil præsentere
+top 10 og **Magnussen** selvfølgelig ;)
 
 ## Kørernes udvikling
 
 ## Teamets udvikling
 
+Her kan man se hvordan de enkelte teams scorer point samlet. Her forventer vi
+jo en klar sejr til Haas ;) 
+
 ## Fold difference from teammate
+
+Jeg vil forsøge at give et estimat på hvor godt kørerne performer i forhold
+til den bil de kører i. Dette gøres tildels ved at holde kørerne fra de 
+enkelte hold op mod hinanden. Men tænker også jeg skal have startpositionen
+med så man kan se om de kører sig op eller dropper placeringer. 
 
 
 # Regler for spillet
 
-Reglerne er simple. Hver fredag inden en løbsdag skal man have sendt til 
+Reglerne er simple. Efter kvallen, men inden løbsdagen skal man have sendt til 
 Christoffer i chatgruppen, **Formula1**, hvilke 3 kører man forventer bliver
 nummer 1, 2 og 3 i det kommende løb.
 
@@ -180,12 +375,12 @@ nummer 1, 2 og 3 i det kommende løb.
 Glemmer man at give noget bud får man 50 point i straf. 
 
 Efter hvert løb bliver det beregnet hvor mange pladser ens kører er væk fra den
-plads man gættede på, at køren blev. Hvis en kører udgår får man 
+plads man gættede på, at køren blev. Hvis en kører udgår 
 anses det at han slutter sidst og får position 20. 
-Altså kan man minimalt få 0 point (før bonuser), mens 
+Altså kan man minimalt få 0 point (før bonuser og joker), mens 
 man maximalt kan få 54 point (20-1 + 20-2 + 20-3 = 19+18+17 = 54).
 
-Slutter ens bud bedre end man har budt får man stadig plus point
+Slutter ens kører bedre end man har budt får man stadig plus point
 
 I formel1 sæsonen køres 23 løb. For at give lidt sikkerhed medregnes ens 3
 dårligste bud ikke i regnskabet og derfor er hver spillers score baseret på
@@ -203,10 +398,24 @@ Har man kun eks. løbets nummer 1 og 2 gives -10 point.
 
 Har man kun løbets nummer 2 og 3 gives ingen bonus. 
 
+## Joker
+
+Hver uge giver man også et bud på en joker. Det er den kører man forventer 
+vil køre flest placeringer frem i forhold til startpositionen. 
+De placeringer ens joker kører frem trækkes fra ens point. 
+For eksempel vælger man en joker der starter som nummer 17 og der slutter 
+som nummer 10 får man -7 joker point
+Altså scorer man 10 point på ens top 3 og ens joker går fra 17 til 10 slutter 
+man på 3 point (10 - 7 = 3). 
+
+Ender ens joker dårligere end han startede lægger man differencen oven i 
+pointene fra top 3. Altså havde han sluttet som nummer 20 (eller udgået) fra 
+forrige eksempel havde man fået 3 point oveni og ville altså ende på 13 point.
+
 ## Præmie
 
 Det er blevet besluttet at vi alle skal en tur ud at køre gokart når sæsonen
-er slut. Her skal nummer 2 og 3 i bettingspillet bestale for udgifter for
+er slut. Her skal nummer 2 og 3 i bettingspillet betale udgifter for
 nummer 1. **Plus ham der slutter sidst giver en øl i fredagsbaren! ;)** 
 
 # Resultaterne for 2022 sæsonen
@@ -260,7 +469,7 @@ ggplot(res, aes(x = driverName,
          y = "Accumulated points",
          title = "2022")+ 
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, 
-                                     size = 8, face = "bold"),
+                                     size = 12, face = "bold"),
           legend.background = element_rect(),
     plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
     plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
@@ -348,7 +557,7 @@ df_results_2022_teams %>%
          y = "Accumulated points",
          title = "2022")+ 
     theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, 
-                                     size = 8, face = "bold"),
+                                     size = 12, face = "bold"),
           legend.background = element_rect(),
     plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
     plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
@@ -366,10 +575,12 @@ df_results_2022_teams %>%
 
 # Information om data
 
-Data er taget fra følgende side <https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020?resource=download> som løbende opdatere den seneste data fra hele F1
+Data er taget fra følgende side <https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020?resource=download> som løbende opdaterer den seneste data fra hele F1
 
 Koden til dette dokument er frit tilgængelig gennem <https://github.com/CTrierMaansson/formula1> hvor der også vil komme løbende
 opdateringer. Jeg henviser til **issues** fanen for bugs og andre problemer 
-med dokumente. Her kan man også rette forslag til statistik man ønsker skal være
-en del af dokumentet 
+man kan have med dokumentet. Her kan man også rette forslag til statistik
+man ønsker skal være en del af dokumentet. 
+
+
 
