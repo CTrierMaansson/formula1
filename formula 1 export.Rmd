@@ -20,9 +20,9 @@ knitr::opts_chunk$set(
     message = FALSE,
     collapse = TRUE,
     comment = "#>",
-    root.dir = "C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive"
+    root.dir = "C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive"
 )
-knitr::opts_knit$set(root.dir = "C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive")
+knitr::opts_knit$set(root.dir = "C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive")
 ```
 \newpage
 # Bets
@@ -36,7 +36,7 @@ Det her var buddene inden seneste løb
 library(dplyr)
 `%ni%` <- Negate(`%in%`)
 bet_df <- function(Christoffer, Emil, Mikkel){
-    drivers <- df_drivers_2022 <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% select(driverId, forename, surname)
+    drivers <- df_drivers_2022 <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% select(driverId, forename, surname)
     if(any(Christoffer %ni% drivers$surname)){
         stop("Én eller flere af Christoffers bud er ikke gyldige")
     }
@@ -62,9 +62,9 @@ bet_df <- function(Christoffer, Emil, Mikkel){
     return(df)
 }
 
-bet_df_w <- bet_df(Christoffer = c("Hamilton", "Leclerc", "Sainz","Ricciardo"),
-                   Emil = c("Verstappen", "Hamilton", "Pérez","Hamilton"),
-                   Mikkel = c("Sainz", "Hamilton", "Leclerc","Sainz"))
+bet_df_w <- bet_df(Christoffer = c("Verstappen", "Leclerc", "Alonso","de Vries"),
+                   Emil = c("Verstappen","Pérez","Leclerc", "Gasly"),
+                   Mikkel = c("Verstappen", "Leclerc", "Pérez","Magnussen"))
 
 ```
 
@@ -85,16 +85,19 @@ Her præsenterer jeg seneste løbs top 10.
 library(dplyr)
 library(ggplot2)
 library(viridis)
-df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
-df_drivers <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
-df_results <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId == df_race$raceId) %>% 
-        left_join(df_drivers, by = "driverId") %>% 
-    filter(points > 0) %>% 
-    arrange(points)
-df_results <- df_results %>% 
-    mutate(surname = factor(surname, levels = df_results$surname))
-ggplot(df_results,aes(x = surname, y = points,
-           fill = surname)) +
+library(RCurl)
+
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
+mutate(date = as.Date(date)) %>%
+mutate(date_diff = Sys.Date()- date) %>% 
+filter(date_diff == max(date_diff))
+df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == "Bahrain") %>% 
+    filter(Points > 0) %>% 
+    arrange(Points)
+df_results <- df_results %>%
+    mutate(Driver = factor(Driver, levels = df_results$Drive))
+ggplot(df_results,aes(x = Driver, y = Points,
+           fill = Driver)) +
     scale_fill_viridis("magma",discrete = T)+ 
     geom_bar(stat = "identity")+
     theme_minimal()+
@@ -121,37 +124,46 @@ ggplot(df_results,aes(x = surname, y = points,
 ```{r, echo=FALSE}
 library(dplyr)
 point_calculator <- function(bet_df){
-    df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
-    df_drivers <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
-    df_results <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId == df_race$raceId) %>% 
-        left_join(df_drivers, by = "driverId")
+    df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
+mutate(date = as.Date(date)) %>%
+mutate(date_diff = Sys.Date()- date) %>% 
+filter(date_diff == max(date_diff))
+    race_date <- as.character(df_race$date)
+    df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == "Bahrain")
+    df_drivers <-  read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% 
+        mutate(tot_name = paste(forename, surname)) %>% 
+        select(tot_name, surname) %>% 
+        mutate(new_names = ifelse(surname == "Pérez","Sergio Perez",tot_name)) %>%
+        mutate(new_names = ifelse(surname == "Hülkenberg","Nico Hulkenberg",new_names)) %>% 
+        mutate(new_names = ifelse(surname == "de Vries","Nyck De Vries",new_names))
+    df_results <- df_results %>% left_join(df_drivers, by = c("Driver" = "new_names"))
     #Christoffer
     bet_Christoffer <- bet_df %>% select(Christoffer)
     res_Christoffer <- match(bet_Christoffer$Christoffer[1:3], df_results$surname) 
     for(i in 1:length(res_Christoffer)){
         ddf <- df_results[res_Christoffer[i],]
-        if(ddf$time == "\\N"){
+        if(ddf$Time.Retired == "DNF"){
             res_Christoffer[i] <- 20
         }
     }
     Christoffer_points <- sum(abs(res_Christoffer-c(1,2,3)))
     joker_Christoffer <- df_results %>% 
         filter(surname == bet_Christoffer$Christoffer[4])
-    joker_res_Christoffer <- ifelse(joker_Christoffer$time == "\\N",
-                                    20-joker_Christoffer$grid,
-                                    as.numeric(joker_Christoffer$position)-
-                                                   joker_Christoffer$grid)
+    joker_res_Christoffer <- ifelse(joker_Christoffer$Time.Retired == "DNF",
+                                    20-joker_Christoffer$Starting.Grid,
+                                    as.numeric(joker_Christoffer$Position)-
+                                                   joker_Christoffer$Starting.Grid)
     bet_Emil <- bet_df %>% select(Emil)
     res_Emil <- match(bet_Emil$Emil[1:3], df_results$surname)
     joker_Emil <- df_results %>% 
         filter(surname == bet_Emil$Emil[4])
-    joker_res_Emil <- ifelse(joker_Emil$time == "\\N",
-                                    20-joker_Emil$grid,
-                                    as.numeric(joker_Emil$position)-
-                                                   joker_Emil$grid)
+    joker_res_Emil <- ifelse(joker_Emil$Time.Retired == "DNF",
+                                    20-joker_Emil$Starting.Grid,
+                                    as.numeric(joker_Emil$Position)-
+                                                   joker_Emil$Starting.Grid)
     for(i in 1:length(res_Emil)){
         ddf <- df_results[res_Emil[i],]
-        if(ddf$time == "\\N"){
+        if(ddf$Time.Retired == "DNF"){
             res_Emil[i] <- 20
         }
     }
@@ -161,17 +173,17 @@ point_calculator <- function(bet_df){
     res_Mikkel <- match(bet_Mikkel$Mikkel[1:3], df_results$surname) 
     for(i in 1:length(res_Mikkel)){
         ddf <- df_results[res_Mikkel[i],]
-        if(ddf$time == "\\N"){
+        if(ddf$Time.Retired == "DNF"){
             res_Mikkel[i] <- 20
         }
     }
     Mikkel_points <- sum(abs(res_Mikkel-c(1,2,3)))
     joker_Mikkel <- df_results %>% 
         filter(surname == bet_Mikkel$Mikkel[4])
-    joker_res_Mikkel <- ifelse(joker_Mikkel$time == "\\N",
-                                    20-joker_Mikkel$grid,
-                                    as.numeric(joker_Mikkel$position)-
-                                                   joker_Mikkel$grid)
+    joker_res_Mikkel <- ifelse(joker_Mikkel$Time.Retired == "DNF",
+                                    20-joker_Mikkel$Starting.Grid,
+                                    as.numeric(joker_Mikkel$Position)-
+                                                   joker_Mikkel$Starting.Grid)
     collected_points <- c(Christoffer_points,Emil_points,Mikkel_points)
     if(any(collected_points == 0)){
         if(sum(collected_points == 0) == 1){
@@ -188,12 +200,14 @@ point_calculator <- function(bet_df){
             if(sum(collected_winners == 0) == 1){
                 winner <- colnames(bet_df)[c(2,3,4)][collected_winners == 0]
             }
+            else{
+                winner <- NULL
+        }
         }
         else{
             winner <- NULL
         }
     }
-    
     res_df <- data.frame(Bets = "Point",
                          Christoffer = Christoffer_points,
                          Emil = Emil_points,
@@ -208,16 +222,23 @@ point_calculator <- function(bet_df){
     res_df$Emil <- res_df$Emil + joker_res_Emil
     res_df$Mikkel <- res_df$Mikkel + joker_res_Mikkel
     df <- rbind(bet_df,res_df)
+    date_df <- data.frame(Bets = "date",
+                         Christoffer = race_date,
+                         Emil = race_date,
+                         Mikkel = race_date)
+    df <- rbind(df,date_df)
     return(df)
 }
-
 ```
 
 Her kan man se hvor mange point vi fik efter seneste grandprix. 
 
 ```{r, echo = F}
 library(dplyr)
-df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
+mutate(date = as.Date(date)) %>%
+mutate(date_diff = Sys.Date()- date) %>% 
+filter(date_diff == max(date_diff))
 
 print(paste(df_race$name,df_race$date))
 
@@ -229,58 +250,66 @@ print(point_calculator(bet_df_w))
 Her kan man se hvordan jokeren har spillet ind på resultatet
 
 ```{r, echo = FALSE}
-library(ggrepel)
-library(viridis)
+
 joker_plot <- function(bet_df){
-    df_race <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
-    df_drivers <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
-    df_results <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId == df_race$raceId) %>% 
-        left_join(df_drivers, by = "driverId")
+    library(ggrepel)
+    library(viridis)
+    #df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
+    #df_drivers <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
+    df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == "Bahrain") 
+    df_drivers <-  
+        read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% 
+        mutate(tot_name = paste(forename, surname)) %>% 
+        select(tot_name, surname) %>% 
+        mutate(new_names = ifelse(surname == "Pérez","Sergio Perez",tot_name)) %>%
+        mutate(new_names = ifelse(surname == "Hülkenberg","Nico Hulkenberg",new_names)) %>% 
+        mutate(new_names = ifelse(surname == "de Vries","Nyck De Vries",new_names))
+    df_results <- df_results %>% left_join(df_drivers, by = c("Driver" = "new_names"))
     bet_Christoffer <- bet_df %>% select(Christoffer)
     bet_Emil <- bet_df %>% select(Emil)
     bet_Mikkel <- bet_df %>% select(Mikkel)
     joker_Christoffer <- df_results %>% 
         filter(surname == bet_Christoffer$Christoffer[4])
-    joker_res_Christoffer <- ifelse(joker_Christoffer$time == "\\N",
-                                    20-joker_Christoffer$grid,
-                                    as.numeric(joker_Christoffer$position)-
-                                                   joker_Christoffer$grid)
+    joker_res_Christoffer <- ifelse(joker_Christoffer$Time.Retired == "DNF",
+                                    20-joker_Christoffer$Starting.Grid,
+                                    as.numeric(joker_Christoffer$Position)-
+                                                   joker_Christoffer$Starting.Grid)
     joker_Emil <- df_results %>% 
         filter(surname == bet_Emil$Emil[4])
-    joker_res_Emil <- ifelse(joker_Emil$time == "\\N",
-                                    20-joker_Emil$grid,
-                                    as.numeric(joker_Emil$position)-
-                                                   joker_Emil$grid)
+    joker_res_Emil <- ifelse(joker_Emil$Time.Retired == "DNF",
+                                    20-joker_Emil$Starting.Grid,
+                                    as.numeric(joker_Emil$Position)-
+                                                   joker_Emil$Starting.Grid)
     joker_Mikkel <- df_results %>% 
         filter(surname == bet_Mikkel$Mikkel[4])
-    joker_res_Mikkel <- ifelse(joker_Mikkel$time == "\\N",
-                                    20-joker_Mikkel$grid,
-                                    as.numeric(joker_Mikkel$position)-
-                                                   joker_Mikkel$grid)
+    joker_res_Mikkel <- ifelse(joker_Mikkel$Time.Retired == "DNF",
+                                    20-joker_Mikkel$Starting.Grid,
+                                    as.numeric(joker_Mikkel$Position)-
+                                                   joker_Mikkel$Starting.Grid)
     df <- data.frame(person = c(rep("Christoffer",2),
                                 rep("Emil",2),
                                 rep("Mikkel",2)),
                      type = factor(rep(c("Start","Slut"),3),
                                    levels = c("Start","Slut")),
-                     position = c(as.numeric(joker_Christoffer$grid),
-                                  ifelse(joker_Christoffer$time == "\\N",
+                     Position = c(as.numeric(joker_Christoffer$Starting.Grid),
+                                  ifelse(joker_Christoffer$Time.Retired == "DNF",
                                          20,
-                                         as.numeric(joker_Christoffer$position)),
-                                  as.numeric(joker_Emil$grid),
-                                  ifelse(joker_Emil$time == "\\N",
+                                         as.numeric(joker_Christoffer$Position)),
+                                  as.numeric(joker_Emil$Starting.Grid),
+                                  ifelse(joker_Emil$Time.Retired == "DNF",
                                          20,
-                                         as.numeric(joker_Emil$position)),
-                                  as.numeric(joker_Mikkel$grid),
-                                  ifelse(joker_Mikkel$time == "\\N",
+                                         as.numeric(joker_Emil$Position)),
+                                  as.numeric(joker_Mikkel$Starting.Grid),
+                                  ifelse(joker_Mikkel$Time.Retired == "DNF",
                                          20,
-                                         as.numeric(joker_Mikkel$position))),
+                                         as.numeric(joker_Mikkel$Position))),
                      driver = c(rep(bet_Christoffer$Christoffer[4],2),
                                 rep(bet_Emil$Emil[4],2),
                                 rep(bet_Mikkel$Mikkel[4],2)),
                      result = c(rep(joker_res_Christoffer,2),
                                 rep(joker_res_Emil,2),
                                 rep(joker_res_Mikkel,2)))
-    gg <- ggplot(df, aes(x = type,y = position,group = person,
+    gg <- ggplot(df, aes(x = type,y = Position,group = person,
                          color = person))+
         geom_point(size = 5)+
         geom_line(linewidth = 1.5)+
@@ -328,10 +357,55 @@ grandprix. Først efter 4. løb vil jeg tage de værste 3 løb ud fra vores
 totale antal point. 
 
 ```{r, echo = FALSE}
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
+mutate(date = as.Date(date)) %>%
+mutate(date_diff = Sys.Date()- date) %>% 
+filter(date_diff == max(date_diff))
+path <- "C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results"
+recent_results <- point_calculator(bet_df_w)
+saveRDS(recent_results,file = paste0(path,"/",df_race$date,".rds"))
+df <- readRDS("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results/2023-03-05.rds")
+```
 
-list_of_bets <- list(point_calculator(bet_df_w))
+```{r, echo = FALSE}
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
+mutate(date = as.Date(date)) %>%
+mutate(date_diff = Sys.Date()- date)
 
+date_df <- df %>% filter(Bets == "date") %>% select(-Bets)
+res_df <- df %>% filter(Bets == "Point")
+dates <- date_df$Christoffer
+df_race_current <- df_race %>% filter(date == dates)
+df_gg <- data.frame(player = colnames(date_df),
+                    result = c(as.numeric(res_df$Christoffer),
+                               as.numeric(res_df$Emil),
+                               as.numeric(res_df$Mikkel)),
+                    place = rep(df_race_current$name,3))
 
+ggplot(df_gg,aes(x = place,y = result,group = player,
+                 color = player))+
+        geom_point(size = 5)+
+        geom_line(linewidth = 1.5)+
+        scale_color_viridis("cividis",discrete = T)+
+        theme_minimal()+
+        scale_y_continuous(limits = c(0,20))+
+        labs(title = paste("Standings as of",df_race$name,df_race$date),
+             x = "Race",
+             y = "Accumulated points")+
+            theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, 
+                                     size = 12, face = "bold"),
+            legend.background = element_rect(),
+            plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+            plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+            axis.text.y = element_text(angle = 0, size = 12),
+            axis.title = element_text(size = 14, face = 'bold'),
+            axis.title.x = element_text(size = 14, face = 'bold'),
+            axis.title.y = element_text(size = 14, face = 'bold'),
+            legend.text = element_text(size = 12), 
+            title = element_text(size = 14, face = "bold"),
+            panel.grid.major.x = element_blank(),
+            legend.title = element_blank())
+    
 ```
 
 ## Hvem har vi bettet på
@@ -424,12 +498,12 @@ Her finder man et lille overblik over hvordan 2022 sæsonen gik.
 
 ## Slut resultat
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,warning=F}
 library(dplyr)
 
-df_races_2022 <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022)
-df_drivers_2022 <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% select(driverId, forename, surname)
-df_results_2022 <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId %in% df_races_2022$raceId) %>% 
+df_races_2022 <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022)
+df_drivers_2022 <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% select(driverId, forename, surname)
+df_results_2022 <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId %in% df_races_2022$raceId) %>% 
     group_by(driverId) %>% 
     summarise(.groups = "keep",
               cumulativePoints = cumsum(points),
@@ -452,7 +526,7 @@ df_results_2022 <- df_results_2022 %>%
 Sidste års klare vinder var Max Verstappen, men det var meget tæt mellem nummer
 2 og 3. 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,warning=F}
 library(ggplot2)
 library(viridis)
 library(ggrepel)
@@ -488,7 +562,7 @@ ggplot(res, aes(x = driverName,
 
 Verstappen havde en dårligere start på sæsonen end nogen af hans konkurrenter
 Herimod havde Magnussen en meget stille sidste halvdel af sæsonen. 
-```{r, echo=FALSE,fig.height= 6}
+```{r, echo=FALSE,fig.height= 6,warning=F}
 library(ggplot2)
 library(viridis)
 library(ggrepel)
@@ -531,11 +605,11 @@ rimelig klar vinder af team konkurrencen. Kampen om andepladsen var tæt mellem
 Mercedes (Russell (4) og Hamilton (5)) og Ferrari (Leclerc (2) og Sainz (6)).
 Williams slutter sidst med bare 7 point på en hel sæson! Det er sgu en ommer!
 
-```{r, echo=FALSE,fig.height= 6}
+```{r, echo=FALSE,fig.height= 6,warning=FALSE}
 library(dplyr)
 library(scales)
-df_constructors <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/constructors.csv") %>% select(constructorId, name)
-df_results_2022_teams <- read.csv("C:/Users/Christoffer/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId %in% df_races_2022$raceId) %>% 
+df_constructors <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/constructors.csv") %>% select(constructorId, name)
+df_results_2022_teams <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/results.csv") %>% filter(raceId %in% df_races_2022$raceId) %>% 
     group_by(constructorId) %>% 
     summarise(.groups = "keep",
               raceId = raceId,
@@ -569,8 +643,6 @@ df_results_2022_teams %>%
     title = element_text(size = 14, face = "bold"),
     panel.grid.major.x = element_blank())+
     guides(fill="none")
-
-
 ```
 
 # Information om data
