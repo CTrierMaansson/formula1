@@ -32,7 +32,7 @@ knitr::opts_knit$set(root.dir = "C:/Users/chris/OneDrive/1PhD/formula1/formula1/
 ## Seneste bets
 
 Det her var buddene inden seneste løb
-```{r, echo=FALSE}
+```{r, echo=FALSE,warning=F}
 library(dplyr)
 `%ni%` <- Negate(`%in%`)
 bet_df <- function(Christoffer, Emil, Mikkel){
@@ -62,16 +62,14 @@ bet_df <- function(Christoffer, Emil, Mikkel){
     return(df)
 }
 
-bet_df_w <- bet_df(Christoffer = c("Verstappen", "Leclerc", "Alonso","de Vries"),
-                   Emil = c("Verstappen","Pérez","Leclerc", "Gasly"),
-                   Mikkel = c("Verstappen", "Leclerc", "Pérez","Magnussen"))
+bet_df_w <- bet_df(Christoffer = c("Pérez", "Alonso", "Russell","Verstappen"),
+                   Emil = c("Verstappen","Pérez","Alonso", "Verstappen"),
+                   Mikkel = c("Pérez", "Verstappen", "Alonso","Verstappen"))
 
 ```
 
-Dette er bare nogen for sjov bud jeg har givet for at kunne tjekke mine 
-funktioner. Skriver selvfølgelig de rigtige ind efter kvallen på lørdag
 
-```{r, echo = F}
+```{r, echo = F,warning=F}
 
 print(bet_df_w)
 ```
@@ -81,17 +79,15 @@ print(bet_df_w)
 
 Her præsenterer jeg seneste løbs top 10. 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,warning=F}
 library(dplyr)
 library(ggplot2)
 library(viridis)
 library(RCurl)
 
-df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
-mutate(date = as.Date(date)) %>%
-mutate(date_diff = Sys.Date()- date) %>% 
-filter(date_diff == max(date_diff))
-df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == "Bahrain") %>% 
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv")
+df_race <- df_race[nrow(df_race),]
+df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == df_race$Track) %>% 
     filter(Points > 0) %>% 
     arrange(Points)
 df_results <- df_results %>%
@@ -121,16 +117,13 @@ ggplot(df_results,aes(x = Driver, y = Points,
 ```
 
 ## Seneste bet resultat
-```{r, echo=FALSE}
+```{r, echo=FALSE,warning=F}
 library(dplyr)
 point_calculator <- function(bet_df){
-    df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
-mutate(date = as.Date(date)) %>%
-mutate(date_diff = Sys.Date()- date) %>% 
-filter(date_diff == max(date_diff))
-    race_date <- as.character(df_race$date)
-    df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == "Bahrain")
-    df_drivers <-  read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% 
+    df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv")
+df_race <- df_race[nrow(df_race),]
+df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == df_race$Track)
+df_drivers <-  read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% 
         mutate(tot_name = paste(forename, surname)) %>% 
         select(tot_name, surname) %>% 
         mutate(new_names = ifelse(surname == "Pérez","Sergio Perez",tot_name)) %>%
@@ -202,45 +195,41 @@ filter(date_diff == max(date_diff))
             }
             else{
                 winner <- NULL
-        }
+            }
         }
         else{
             winner <- NULL
         }
     }
+    else{
+            winner <- NULL
+        }
     res_df <- data.frame(Bets = "Point",
                          Christoffer = Christoffer_points,
                          Emil = Emil_points,
                          Mikkel = Mikkel_points)
     if(!is.null(winner_all3)){
-        res_df[winner_all3] <- -30
+        res_df[winner_all3] <- -15
     }
     if(!is.null(winner)){
-        res_df[winner] <- -10
+        res_df[winner] <- -5
     }
     res_df$Christoffer <- res_df$Christoffer + joker_res_Christoffer
     res_df$Emil <- res_df$Emil + joker_res_Emil
     res_df$Mikkel <- res_df$Mikkel + joker_res_Mikkel
     df <- rbind(bet_df,res_df)
-    date_df <- data.frame(Bets = "date",
-                         Christoffer = race_date,
-                         Emil = race_date,
-                         Mikkel = race_date)
-    df <- rbind(df,date_df)
     return(df)
 }
 ```
 
 Her kan man se hvor mange point vi fik efter seneste grandprix. 
 
-```{r, echo = F}
+```{r, echo = F,warning=F}
 library(dplyr)
-df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
-mutate(date = as.Date(date)) %>%
-mutate(date_diff = Sys.Date()- date) %>% 
-filter(date_diff == max(date_diff))
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv")
+df_race <- df_race[nrow(df_race),]
 
-print(paste(df_race$name,df_race$date))
+print(paste(df_race$Track))
 
 print(point_calculator(bet_df_w))
 ```
@@ -249,14 +238,14 @@ print(point_calculator(bet_df_w))
 
 Her kan man se hvordan jokeren har spillet ind på resultatet
 
-```{r, echo = FALSE}
+```{r, echo = FALSE,warning=F}
 
 joker_plot <- function(bet_df){
     library(ggrepel)
     library(viridis)
-    #df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2022) %>% filter(raceId == max(raceId))
-    #df_drivers <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv")
-    df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == "Bahrain") 
+    df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv")
+df_race <- df_race[nrow(df_race),]
+    df_results <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>% filter(Track == df_race$Track) 
     df_drivers <-  
         read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/drivers.csv") %>% 
         mutate(tot_name = paste(forename, surname)) %>% 
@@ -356,40 +345,45 @@ Her kan man se hvordan det går i vores interne konkurrence efter hvert
 grandprix. Først efter 4. løb vil jeg tage de værste 3 løb ud fra vores 
 totale antal point. 
 
-```{r, echo = FALSE}
-df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
-mutate(date = as.Date(date)) %>%
-mutate(date_diff = Sys.Date()- date) %>% 
-filter(date_diff == max(date_diff))
+```{r, echo = FALSE,warning=F}
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv")
+df_race <- df_race[nrow(df_race),]
 path <- "C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results"
 recent_results <- point_calculator(bet_df_w)
-saveRDS(recent_results,file = paste0(path,"/",df_race$date,".rds"))
-df <- readRDS("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results/2023-03-05.rds")
+saveRDS(recent_results,file = paste0(path,"/",df_race$Track,".rds"))
+df <- readRDS("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results/Saudi Arabia.rds")
 ```
 
-```{r, echo = FALSE}
-df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/archive/races.csv") %>% filter(year == 2023) %>%
-mutate(date = as.Date(date)) %>%
-mutate(date_diff = Sys.Date()- date)
-
-date_df <- df %>% filter(Bets == "date") %>% select(-Bets)
-res_df <- df %>% filter(Bets == "Point")
-dates <- date_df$Christoffer
-df_race_current <- df_race %>% filter(date == dates)
-df_gg <- data.frame(player = colnames(date_df),
-                    result = c(as.numeric(res_df$Christoffer),
-                               as.numeric(res_df$Emil),
-                               as.numeric(res_df$Mikkel)),
-                    place = rep(df_race_current$name,3))
-
-ggplot(df_gg,aes(x = place,y = result,group = player,
+```{r, echo = FALSE,warning=F}
+library(tidyverse)
+setwd("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results")
+list_of_files <- list.files(path = "C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results")
+df_1 <- readRDS("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results/Bahrain.rds") %>% filter(Bets != "date")
+df_2 <- readRDS("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/bet_results/Saudi Arabia.rds")
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv")
+df_results <- rbind(df_1,df_2)
+res_df <- df_results %>% filter(Bets == "Point")
+res_df$place <- c("Bahrain", "Saudi Arabia")
+res_df$Christoffer <- as.numeric(res_df$Christoffer)
+res_df$Emil <- as.numeric(res_df$Emil)
+res_df$Mikkel <- as.numeric(res_df$Mikkel)
+res_df_gg <- data.frame(place = rep(res_df$place,3),
+                        player = c(rep(colnames(res_df)[2],2),
+                                   rep(colnames(res_df)[3],2),
+                                   rep(colnames(res_df)[4],2)),
+                        result = c(as.numeric(res_df$Christoffer),
+                                   as.numeric(res_df$Emil),
+                                   as.numeric(res_df$Mikkel))) %>% 
+    group_by(player) %>% 
+    summarise(sum_result = cumsum(result),
+              place = place)
+ggplot(res_df_gg,aes(x = place,y = sum_result,group = player,
                  color = player))+
         geom_point(size = 5)+
         geom_line(linewidth = 1.5)+
         scale_color_viridis("cividis",discrete = T)+
         theme_minimal()+
-        scale_y_continuous(limits = c(0,20))+
-        labs(title = paste("Standings as of",df_race$name,df_race$date),
+        labs(title = paste("Standings"),
              x = "Race",
              y = "Accumulated points")+
             theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1, 
@@ -408,34 +402,187 @@ ggplot(df_gg,aes(x = place,y = result,group = player,
     
 ```
 
-## Hvem har vi bettet på
-
-Her er det mening jeg vil tælle hvor mange gange vi har bettet på de enkelte
-kører samt hvordan vores bets performer med de enkelte kører
-
-## Hvor meget vinder vi på vores joker
-
-Her er det meningen jeg vil summere hvor meget jokeren har haft betydning
-for vores bets gennem sæsonen
 
 # Kørernes resultater
 
-Her kan man se hvordan kørerne scorer point gennem sæson. Jeg vil præsentere
-top 10 og **Magnussen** selvfølgelig ;)
-
 ## Kørernes udvikling
+Her kan man se hvem der fører løbet og hvordan de har fået point gennem sæsonen
+Jeg viser top10 + Magnussen
+```{r, echo = FALSE,warning=F}
+
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>%
+    group_by(Driver) %>% 
+    reframe(.groups = "Driver",
+              cum_sums = cumsum(Points),
+              place = Track) %>% 
+    group_by(Driver) %>% 
+    reframe(.groups = "Driver",
+            cum_sums = cum_sums,
+              sums = max(cum_sums),
+              place = place)
+    
+top_10 <- df_race %>% 
+    group_by(Driver) %>% 
+    slice(1) %>% 
+    arrange(desc(sums)) %>% 
+    ungroup() %>% 
+    dplyr::slice(1:10)
+
+df_race_gg <- df_race %>% 
+    filter(Driver %in% top_10$Driver | Driver == "Kevin Magnussen") %>% 
+    mutate(label = ifelse(place == unique(df_race$place)[length(unique(df_race$place))],Driver,NA))
+
+ggplot(df_race_gg, aes(x = place,
+                            y = cum_sums,
+                            colour = Driver,
+                            group = Driver))+
+    geom_point()+
+    scale_color_viridis("magma",discrete = T)+ 
+    geom_line()+
+    theme_minimal()+
+    labs(y = "Points",
+         x = "",
+         title = "2023 drivers")+
+    geom_label_repel(aes(label=label),
+                  nudge_x = 0.5,
+                  na.rm = TRUE,
+                  label.size = NA,
+                  size = 3.5,
+                  fill = alpha(c("white"),0),
+                  parse = F,
+                 max.overlaps = 100)+
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1,size = 8),
+          legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+    axis.text.y = element_text(angle = 0, size = 12),
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.title.x = element_text(size = 14, face = 'bold'),
+    axis.title.y = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 12), 
+    title = element_text(size = 14, face = "bold"))+
+   guides(color="none")
+
+```
 
 ## Teamets udvikling
 
 Her kan man se hvordan de enkelte teams scorer point samlet. Her forventer vi
 jo en klar sejr til Haas ;) 
 
+```{r, echo = FALSE,warning=F}
+
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>%
+    group_by(Team,Track) %>%
+    reframe(.groups = "Team",
+              team_sums = sum(Points)) %>% 
+    group_by(Team) %>% 
+    reframe(.groups = "Team",
+            cum_sums = cumsum(team_sums),
+            place = Track) %>% 
+    group_by(Team) %>% 
+    reframe(.groups = "Team",
+            cum_sums = cum_sums,
+              sums = max(cum_sums),
+              place = place)
+
+df_race <- df_race %>% mutate(label = ifelse(place == unique(df_race$place)[length(unique(df_race$place))],Team,NA)) 
+
+ggplot(df_race, aes(x = place,
+                            y = cum_sums,
+                            colour = Team,
+                            group = Team))+
+    geom_point()+
+    scale_color_viridis("magma",discrete = T)+ 
+    geom_line()+
+    theme_minimal()+
+    labs(y = "Points",
+         x = "",
+         title = "2023 teams")+
+    geom_label_repel(aes(label=label),
+                  nudge_x = 0.5,
+                  na.rm = TRUE,
+                  label.size = NA,
+                  size = 3.5,
+                  fill = alpha(c("white"),0),
+                  parse = F,
+                 max.overlaps = 100)+
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1,size = 8),
+          legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+    axis.text.y = element_text(angle = 0, size = 12),
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.title.x = element_text(size = 14, face = 'bold'),
+    axis.title.y = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 12), 
+    title = element_text(size = 14, face = "bold"))+
+   guides(color="none")
+
+```
+
 ## Fold difference from teammate
 
-Jeg vil forsøge at give et estimat på hvor godt kørerne performer i forhold
-til den bil de kører i. Dette gøres tildels ved at holde kørerne fra de 
-enkelte hold op mod hinanden. Men tænker også jeg skal have startpositionen
-med så man kan se om de kører sig op eller dropper placeringer. 
+Det her plot viser hvor mange point den førerne kører fra hvert team har scoret
+i forhold til hans holdkammerat. Størrelsen og farven på cirklen indikerer 
+hvem mange på point køren har fået. På Y-aksen kan man se hvor mange point
+han har fået i forhold til sin holdkammerat. Navnet på hans hold og teammate kan
+ses på X-aksen. 
+
+```{r, echo = FALSE,fig.height= 6,warning=F}
+df_race <- read.csv("C:/Users/chris/OneDrive/1PhD/formula1/formula1/formula1_dataset/Formula1_2023season_raceResults.csv") %>%
+    group_by(Driver) %>%
+    reframe(.groups = "Driver",
+            sums = sum(Points),
+            Team = Team,
+            Driver = Driver) %>% 
+    group_by(Driver) %>% 
+    slice(1) %>% 
+    group_by(Team) %>% 
+    reframe(.groups = "Driver",
+            lowest = Driver[which.min(sums)],
+            Driver = Driver,
+            sums = sums+1) %>% 
+    group_by(Team) %>% 
+    reframe(fold = ifelse(Driver == lowest,NA,sums/min(sums)),
+            Driver = Driver,
+            Points = sums-1,
+            Team = Team,
+            lowest = lowest,
+            team_driver = paste0(Team,", ",lowest)) %>% 
+    filter(!is.na(fold))
+    
+ggplot(df_race, aes(x = team_driver,
+                            y = fold,
+                            color = Points,
+                            size = Points))+
+    geom_point()+
+    geom_label_repel(aes(label=Driver),
+                  nudge_x = 0.5,
+                  na.rm = TRUE,
+                  label.size = NA,
+                  size = 3.5,
+                  fill = alpha(c("white"),0),
+                  parse = F,
+                 max.overlaps = 100)+
+    scale_color_gradient(low = "#6a00fc", high = "#ffa10c")+ 
+    theme_minimal()+
+    labs(y = "Fold points compared to teammate",
+         x = "Teams",
+         title = "Driver comparisons")+
+    theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1,size = 8),
+          legend.background = element_rect(),
+    plot.title = element_text(angle = 0, size = 16, face = 'bold', vjust = 1),
+    plot.caption = element_text(angle = 0, size = 10, vjust = 1, hjust = 0.37),
+    axis.text.y = element_text(angle = 0, size = 12),
+    axis.title = element_text(size = 14, face = 'bold'),
+    axis.title.x = element_text(size = 14, face = 'bold'),
+    axis.title.y = element_text(size = 14, face = 'bold'),
+    legend.text = element_text(size = 12), 
+    title = element_text(size = 14, face = "bold"))+
+    guides(fill = guide_legend(title="Points"))
+
+``` 
 
 
 # Regler for spillet
@@ -464,11 +611,11 @@ i alt 20 løb til slut i sæsonen.
 
 Der udlådes bonus på to måder. 
 
-1) Er man den eneste der har løbets vinder gives -10 point
+1) Er man den eneste der har løbets vinder gives -5 point
 
-2) Er man den eneste der har løbets top 3 gives -30 point
+2) Er man den eneste der har løbets top 3 gives -15 point
 
-Har man kun eks. løbets nummer 1 og 2 gives -10 point.
+Har man kun eks. løbets nummer 1 og 2 gives -5 point.
 
 Har man kun løbets nummer 2 og 3 gives ingen bonus. 
 
@@ -647,7 +794,7 @@ df_results_2022_teams %>%
 
 # Information om data
 
-Data er taget fra følgende side <https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020?resource=download> som løbende opdaterer den seneste data fra hele F1
+Data er taget fra følgende side <https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020?resource=download> samt <https://github.com/toUpperCase78/formula1-datasets> som løbende opdaterer den seneste data fra hele F1
 
 Koden til dette dokument er frit tilgængelig gennem <https://github.com/CTrierMaansson/formula1> hvor der også vil komme løbende
 opdateringer. Jeg henviser til **issues** fanen for bugs og andre problemer 
